@@ -41,9 +41,10 @@
 #include <amxmodx>
 #include <amxmisc>
 #include <dodx>
+#include <ktp_version_reporter>
 
 #define PLUGIN_NAME    "KTP Score Tracker"
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.1.1"
 #define PLUGIN_AUTHOR  "Nein_"
 
 #define MAX_CPS      12
@@ -97,6 +98,7 @@ new bool:g_capoutRecoveryDone;    // prevent double-award within a half
 
 public plugin_init() {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR);
+	KTP_RegisterVersion(PLUGIN_NAME, PLUGIN_VERSION);
 
 	// "Final Scores" is logged by the DoD game DLL when intermission starts.
 	// This fires at timelimit expiry BEFORE changelevel — the game is frozen
