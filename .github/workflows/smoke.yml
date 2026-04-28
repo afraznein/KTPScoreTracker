@@ -1,0 +1,24 @@
+# KTP Tier 1 — Build-time smoke for KTPScoreTracker
+# Implementation in KTPInfrastructure/.github/workflows/smoke-callable.yml.
+
+name: Tier 1 Smoke
+
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['**.md', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    uses: ${{ github.repository_owner }}/KTPInfrastructure/.github/workflows/smoke-callable.yml@main
+    with:
+      under_test_label: KTPScoreTracker
+      under_test_kind: amx_plugin
+      amxx_source: KTPScoreTracker.sma
+      artifact_container_path: /opt/hlds/dod/addons/ktpamx/plugins/KTPScoreTracker.amxx
+      assert_plugin: KTPScoreTracker
+    secrets:
+      ktp_checkout_token: ${{ secrets.KTP_CHECKOUT_TOKEN }}
