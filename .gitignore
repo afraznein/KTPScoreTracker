@@ -11,6 +11,3 @@ compiled/
 # OS files
 .DS_Store
 Thumbs.db
-
-# Claude Code context (contains production credentials)
-CLAUDE.md
