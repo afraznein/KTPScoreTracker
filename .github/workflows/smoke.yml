@@ -1,14 +1,16 @@
 # KTP Tier 1 — Build-time smoke for KTPScoreTracker
 # Implementation in KTPInfrastructure/.github/workflows/smoke-callable.yml.
+#
+# Manual-only until KTPScoreTracker is declared production-ready and added
+# to the canonical plugins.ini. Auto-triggers were tried 2026-05-28 and
+# failed because the container's plugins.ini intentionally omits this
+# plugin (operator decision per memory `scoretracker_preproduction.md`),
+# so the load-assert always fails. Re-enable push/PR triggers when the
+# plugin is in plugins.ini.
 
 name: Tier 1 Smoke
 
 on:
-  push:
-    branches: ['**']
-    paths-ignore: ['**.md', 'docs/**']
-  pull_request:
-    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
 
 jobs:
