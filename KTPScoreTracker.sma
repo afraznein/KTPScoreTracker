@@ -1,9 +1,9 @@
-/* KTP Score Tracker v1.1.0
+/* KTP Score Tracker v1.1.2
  * Verbose capture scoring with chat output and HLStatsX-compatible logging
  *
  * AUTHOR: Nein_
- * VERSION: 1.1.0
- * DATE: 2026-04-01
+ * VERSION: 1.1.2
+ * DATE: 2026-07-06
  *
  * DESCRIPTION:
  * Consumes DODX control point forwards to provide real-time capture
@@ -21,6 +21,17 @@
  * - KTPMatchHandler v0.10.1+ (for ktp_match_start/ktp_match_end forwards)
  *
  * CHANGELOG:
+ *   v1.1.2 (2026-07-06):
+ *     - Capout recovery hardened for the pre-changelevel window: gamerules
+ *       guard before any score read/write; dodx_set_team_score return
+ *       checked so a failed write can't broadcast/log a score the server
+ *       never held (KTP_CAPOUT_RECOVERY_FAILED on failure)
+ *     - dod_score_event guards the player id before logging/batching
+ *
+ *   v1.1.1 (2026-04-25):
+ *     - Adopted ktp_version_reporter shared include (amx_ktp_versions rcon)
+ *     - compile.sh build-info generation (git SHA + UTC build time)
+ *
  *   v1.1.0 (2026-04-01):
  *     - Timelimit capout recovery: awards stolen capout bonus when a team
  *       captures all CPs in the same frame as timelimit expiry
@@ -44,7 +55,7 @@
 #include <ktp_version_reporter>
 
 #define PLUGIN_NAME    "KTP Score Tracker"
-#define PLUGIN_VERSION "1.1.1"
+#define PLUGIN_VERSION "1.1.2"
 #define PLUGIN_AUTHOR  "Nein_"
 
 #define MAX_CPS      12
@@ -163,6 +174,12 @@ public dod_score_event(id, score_delta, total_score, cp_index) {
 	if (cp_index < 0)
 		return;
 
+	// Guard the id like the stats path below already does — the log line
+	// and pending batch would otherwise take garbage ids and emit
+	// malformed HLStatsX entries.
+	if (id < 1 || id > 32)
+		return;
+
 	// If this is for a different CP than pending, flush old batch first
 	if (g_pendingCP != cp_index && g_pendingCount > 0)
 		flush_capture();
@@ -174,8 +191,8 @@ public dod_score_event(id, score_delta, total_score, cp_index) {
 		g_pendingCount++;
 	}
 
-	// Update match stats
-	if (g_matchActive && id >= 1 && id <= 32) {
+	// Update match stats (id already validated by the top guard)
+	if (g_matchActive) {
 		g_playerCapPoints[id] += score_delta;
 		g_playerCapCount[id]++;
 	}
@@ -374,6 +391,15 @@ public logevent_final_scores() {
 	if (g_cpCount < 1)
 		return;
 
+	// This path reads AND writes gamerules scores inside the pre-changelevel
+	// window. Without gamerules the write would fail while the read silently
+	// falls back to the message-tracked score — bail before deciding anything
+	// from mismatched sources.
+	if (!dodx_has_gamerules()) {
+		log_amx("[KTPScoreTracker] Capout check skipped: gamerules unavailable at intermission");
+		return;
+	}
+
 	// Only recover if a CP flip happened very recently (same frame / within window)
 	new Float:elapsed = get_gametime() - g_lastCPFlipTime;
 	if (g_lastCPFlipTime == 0.0 || elapsed > CAPOUT_RECOVERY_WINDOW)
@@ -455,16 +481,27 @@ award_capout_recovery(team) {
 	new currentScore = dodx_get_team_score(team);
 	new newScore = currentScore + bonus;
 
-	// Apply
-	dodx_set_team_score(team, newScore);
-	dodx_broadcast_team_score(team, newScore);
-
 	// Build team name string
 	new teamStr[8];
 	if (team == TEAM_ALLIES)
 		copy(teamStr, charsmax(teamStr), "Allies");
 	else
 		copy(teamStr, charsmax(teamStr), "Axis");
+
+	// Apply — checked: a failed write must not produce the success
+	// broadcast/chat/log below. NOTE: today dodx raises a native error on
+	// failure (aborting this function before the check — still safe, since
+	// the abort also skips the broadcast), so this branch only becomes
+	// live once dodx_set_team_score honors its documented return-0
+	// contract; kept as the correct shape either way.
+	if (!dodx_set_team_score(team, newScore)) {
+		log_amx("[KTPScoreTracker] Capout recovery FAILED: dodx_set_team_score(%d, %d) rejected — no points awarded",
+			team, newScore);
+		log_message("KTP_CAPOUT_RECOVERY_FAILED (team ^"%s^") (bonus ^"%d^") (matchid ^"%s^")",
+			teamStr, bonus, g_matchId);
+		return;
+	}
+	dodx_broadcast_team_score(team, newScore);
 
 	// Notify players
 	client_print(0, print_chat, "[KTP] CAPOUT RECOVERY: %s captured all %d flags at timelimit — +%d bonus points awarded",
