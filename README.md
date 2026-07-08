@@ -1,4 +1,4 @@
-# KTP Score Tracker v1.1.2
+# KTP Score Tracker v1.1.3
 
 Verbose capture scoring plugin for KTP Day of Defeat servers. Outputs real-time capture notifications to chat and logs detailed HLStatsX-compatible entries to the server log.
 
@@ -66,6 +66,6 @@ KTP_CP_CAPTURED (cp "3") (name "POINT_ANZIO_PLAZA") (new_owner "2") (old_owner "
 
 ## Version
 
-Current: v1.1.2
+Current: v1.1.3
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.

@@ -1,9 +1,9 @@
-/* KTP Score Tracker v1.1.2
+/* KTP Score Tracker v1.1.3
  * Verbose capture scoring with chat output and HLStatsX-compatible logging
  *
  * AUTHOR: Nein_
- * VERSION: 1.1.2
- * DATE: 2026-07-06
+ * VERSION: 1.1.3
+ * DATE: 2026-07-08
  *
  * DESCRIPTION:
  * Consumes DODX control point forwards to provide real-time capture
@@ -21,6 +21,15 @@
  * - KTPMatchHandler v0.10.1+ (for ktp_match_start/ktp_match_end forwards)
  *
  * CHANGELOG:
+ *   v1.1.3 (2026-07-08):
+ *     - matchId copied on every ktp_match_start (explicit-OT first start is
+ *       half=101, so the half==1 gate logged matchid="" for all OT caps);
+ *       a changed id resets per-match stats (new-match boundary)
+ *     - Per-player cap stats cleared on client_disconnected (subs no longer
+ *       inherit a leaver's slot stats)
+ *     - g_matchActive + pending batch cleared in plugin_init so half-2
+ *       pre-live warmup caps stop counting into match stats
+ *
  *   v1.1.2 (2026-07-06):
  *     - Capout recovery hardened for the pre-changelevel window: gamerules
  *       guard before any score read/write; dodx_set_team_score return
@@ -55,7 +64,7 @@
 #include <ktp_version_reporter>
 
 #define PLUGIN_NAME    "KTP Score Tracker"
-#define PLUGIN_VERSION "1.1.2"
+#define PLUGIN_VERSION "1.1.3"
 #define PLUGIN_AUTHOR  "Nein_"
 
 #define MAX_CPS      12
@@ -115,6 +124,27 @@ public plugin_init() {
 	// This fires at timelimit expiry BEFORE changelevel — the game is frozen
 	// but we still have a brief window to read CP state and award points.
 	register_logevent("logevent_final_scores", 0, "0=Final Scores");
+
+	// Globals survive map changes in extension mode. Left armed, the h1→h2
+	// map change would count half-2 warmup caps into match stats under the
+	// live matchid; ktp_match_start re-arms when the half goes live.
+	// g_matchId is NOT cleared — it must carry across the mid-match map change.
+	g_matchActive = false;
+	g_pendingCP = -1;
+	g_pendingCount = 0;
+}
+
+// ============================================================
+// Client Disconnect
+// ============================================================
+
+public client_disconnected(id) {
+	// Stats are slot-indexed — a sub joining into this slot must not
+	// inherit the leaver's captures.
+	if (id >= 1 && id <= 32) {
+		g_playerCapPoints[id] = 0;
+		g_playerCapCount[id] = 0;
+	}
 }
 
 // ============================================================
@@ -275,8 +305,13 @@ flush_capture() {
 // ============================================================
 
 public ktp_match_start(const matchId[], const map[], MatchType:matchType, half) {
-	// Only reset stats on first half start
-	if (half == 1) {
+	// Copy on every start — explicit-OT matches fire their first start with
+	// half=101, so gating on half==1 left matchid empty (or stale: .forcereset
+	// never fires ktp_match_end). A changed id is the new-match boundary, and
+	// half==1 also resets: 1.3-Community ids carry no timestamp, so the same
+	// queue restarted after a .forcereset presents an IDENTICAL id — without
+	// the half==1 reset the aborted attempt's caps would leak into the restart.
+	if (!equal(g_matchId, matchId) || half == 1) {
 		copy(g_matchId, charsmax(g_matchId), matchId);
 		reset_player_stats();
 	}

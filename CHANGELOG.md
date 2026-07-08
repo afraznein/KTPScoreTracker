@@ -2,6 +2,13 @@
 
 All notable changes to KTPScoreTracker will be documented in this file.
 
+## [1.1.3] - 2026-07-08
+
+### Fixed
+- **Match linkage restored for explicit-OT matches** (2026-07-06 wave-2 plugin assessment). `ktp_match_start` copied `matchId` only when `half == 1`, but `.ktpOT`/`.draftOT` matches fire their first start with half=101 (halves are 1, 2, or 100+round) — so every `KTP_CP_CAPTURED`/`ktp_cap_score`/`ktp_cap_summary`/capout line in an explicit-OT match carried `matchid=""`. Worse variant (confirmed reachable): `.forcereset` does not fire `ktp_match_end`, so the *previous* match's id survived and the next explicit-OT match logged all its captures under the stale id. Now the id is copied on every `ktp_match_start`, and a changed id is treated as the new-match boundary — per-match stats reset there instead of on the half==1 gate.
+- **Substitutes no longer inherit a leaver's capture stats.** Per-player cap stats are slot-indexed with no disconnect reset — a sub joining into a leaver's slot mid-match inherited their caps/points and was credited with them in the end-of-match summary and `ktp_cap_summary` log lines. The slot's stats now clear in `client_disconnected`.
+- **Half-2 pre-live warmup caps no longer count as match stats.** `g_matchActive` persisted across the h1→h2 map change (globals survive map changes in extension mode), so caps during half-2 warmup — before the half went live — accumulated into match stats under the live matchid. `plugin_init` now disarms match attribution (and clears the pending capture batch) at every map boundary; `ktp_match_start` re-arms it when the half goes live. `g_matchId` intentionally still carries across the mid-match map change.
+
 ## [1.1.2] - 2026-07-06
 
 ### Fixed
