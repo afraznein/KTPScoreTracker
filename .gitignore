@@ -11,3 +11,6 @@ compiled/
 # OS files
 .DS_Store
 Thumbs.db
+
+# machine-local Claude permissions (skills ARE published)
+.claude/settings.local.json
