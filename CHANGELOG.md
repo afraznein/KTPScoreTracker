@@ -2,6 +2,12 @@
 
 All notable changes to KTPScoreTracker will be documented in this file.
 
+## [1.1.4] - 2026-07-18
+
+### Fixed
+- **ST-01: warmup control-point captures were logged under the live matchid.** `dod_control_point_captured` (`KTP_CP_CAPTURED`) and `dod_score_event` (`ktp_cap_score`) called `log_message` unconditionally with `g_matchId`, which is deliberately kept populated across the h1→h2 map change. During the h2 warmup window (post-map-change, pre-`.ready`) ordinary caps were tagged with the prior half's live matchid and were indistinguishable from official in-match captures to any HLStatsX consumer correlating by matchid. Both log lines are now gated on `g_matchActive`, mirroring the counter gate the in-memory stats already had (the leak v1.1.3 closed for counters but not for log output). Chat feedback is unaffected.
+- **ST-02: deferred capture-flush read the player name by a stale slot.** `dod_score_event` batches the scoring slot id and flushes 0.1s later via `set_task`; `flush_capture` called `get_user_name()` on the stored slot with no connection/identity check, so a disconnect (or a new player landing in the recycled slot) within that window could print a blank or wrong name. Now snapshots the userid at add time and, at flush, only trusts the live name when the slot is still connected and still that userid; otherwise falls back to "a departed player".
+
 ## [1.1.3] - 2026-07-08
 
 ### Fixed

@@ -1,9 +1,9 @@
-/* KTP Score Tracker v1.1.3
+/* KTP Score Tracker v1.1.4
  * Verbose capture scoring with chat output and HLStatsX-compatible logging
  *
  * AUTHOR: Nein_
- * VERSION: 1.1.3
- * DATE: 2026-07-08
+ * VERSION: 1.1.4
+ * DATE: 2026-07-18
  *
  * DESCRIPTION:
  * Consumes DODX control point forwards to provide real-time capture
@@ -21,6 +21,12 @@
  * - KTPMatchHandler v0.10.1+ (for ktp_match_start/ktp_match_end forwards)
  *
  * CHANGELOG:
+ *   v1.1.4 (2026-07-18):
+ *     - ST-01: KTP_CP_CAPTURED / ktp_cap_score log lines now gated on
+ *       g_matchActive, so h2 warmup caps aren't tagged with the carried-over
+ *       live matchid and misattributed by HLStatsX
+ *     - ST-02: deferred capture flush snapshots userid at add time and
+ *       revalidates the slot before reading its name (slots recycle in the 0.1s)
  *   v1.1.3 (2026-07-08):
  *     - matchId copied on every ktp_match_start (explicit-OT first start is
  *       half=101, so the half==1 gate logged matchid="" for all OT caps);
@@ -64,7 +70,7 @@
 #include <ktp_version_reporter>
 
 #define PLUGIN_NAME    "KTP Score Tracker"
-#define PLUGIN_VERSION "1.1.3"
+#define PLUGIN_VERSION "1.1.4"
 #define PLUGIN_AUTHOR  "Nein_"
 
 #define MAX_CPS      12
@@ -103,6 +109,7 @@ new g_playerCapCount[33];
 new g_pendingCP = -1;
 new g_pendingOwner;
 new g_pendingPlayers[MAX_CAPPERS];
+new g_pendingUserId[MAX_CAPPERS];   // userid snapshot — slots recycle across the 0.1s flush defer
 new g_pendingPoints[MAX_CAPPERS];
 new g_pendingCount;
 
@@ -190,9 +197,13 @@ public dod_control_point_captured(cp_index, new_owner, old_owner) {
 	else
 		formatex(cpName, charsmax(cpName), "CP_%d", cp_index);
 
-	// Log immediately
-	log_message("KTP_CP_CAPTURED (cp ^"%d^") (name ^"%s^") (new_owner ^"%d^") (old_owner ^"%d^") (matchid ^"%s^")",
-		cp_index, cpName, new_owner, old_owner, g_matchId);
+	// Log immediately — only under a live match. g_matchId is deliberately kept
+	// populated across the h1->h2 map change, so without this gate a warmup cap
+	// (pre-.ready h2 window) would be logged under the prior half's live matchid
+	// and misattributed by HLStatsX. Mirrors the g_matchActive counter gate below.
+	if (g_matchActive)
+		log_message("KTP_CP_CAPTURED (cp ^"%d^") (name ^"%s^") (new_owner ^"%d^") (old_owner ^"%d^") (matchid ^"%s^")",
+			cp_index, cpName, new_owner, old_owner, g_matchId);
 }
 
 // ============================================================
@@ -217,6 +228,7 @@ public dod_score_event(id, score_delta, total_score, cp_index) {
 	// Add player to batch
 	if (g_pendingCount < MAX_CAPPERS) {
 		g_pendingPlayers[g_pendingCount] = id;
+		g_pendingUserId[g_pendingCount] = get_user_userid(id);  // stable identity for the deferred flush
 		g_pendingPoints[g_pendingCount] = score_delta;
 		g_pendingCount++;
 	}
@@ -240,8 +252,10 @@ public dod_score_event(id, score_delta, total_score, cp_index) {
 	else
 		formatex(cpName, charsmax(cpName), "CP_%d", cp_index);
 
-	log_message("^"%s<%d><%s><%s>^" triggered ^"ktp_cap_score^" (cp ^"%d^") (cpname ^"%s^") (points ^"%d^") (matchid ^"%s^")",
-		name, userId, authid, teamName, cp_index, cpName, score_delta, g_matchId);
+	// Live-match only — same warmup-misattribution guard as KTP_CP_CAPTURED.
+	if (g_matchActive)
+		log_message("^"%s<%d><%s><%s>^" triggered ^"ktp_cap_score^" (cp ^"%d^") (cpname ^"%s^") (points ^"%d^") (matchid ^"%s^")",
+			name, userId, authid, teamName, cp_index, cpName, score_delta, g_matchId);
 
 	// Schedule batch flush (only on first player in batch)
 	if (g_pendingCount == 1) {
@@ -284,7 +298,13 @@ flush_capture() {
 	new pos = 0;
 	for (new i = 0; i < g_pendingCount; i++) {
 		new pName[32];
-		get_user_name(g_pendingPlayers[i], pName, charsmax(pName));
+		// Slots recycle across the 0.1s defer: only trust the live name if the
+		// slot is still connected AND still the same player (userid) that scored.
+		new slot = g_pendingPlayers[i];
+		if (is_user_connected(slot) && get_user_userid(slot) == g_pendingUserId[i])
+			get_user_name(slot, pName, charsmax(pName));
+		else
+			copy(pName, charsmax(pName), "a departed player");
 
 		if (i > 0)
 			pos += formatex(playerList[pos], charsmax(playerList) - pos, ", ");
