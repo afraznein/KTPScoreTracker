@@ -26,7 +26,7 @@ Verbose capture-scoring plugin for KTP Day of Defeat servers. Outputs real-time 
 
 ## Dependencies
 - **DODX module with CP tracking** — `controlpoints_init`, `dod_control_point_captured`, `dod_score_event` forwards
-- **KTPMatchHandler v0.10.1+** — `ktp_match_start` / `ktp_match_end` forwards drive the per-match stat reset + summary
+- **KTPMatchHandler v0.10.39+** — `ktp_match_start` / `ktp_match_end` forwards drive the per-match stat reset + summary. 0.10.39 is the floor: it added the 4th `half` param and made the start forward fire on every half.
 - **`ktp_version_reporter` shared include** (KTPAMXX) — registers with fleet-wide `amx_ktp_versions` rcon command
 
 ## Server Deployment

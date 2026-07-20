@@ -2,6 +2,44 @@
 
 All notable changes to KTPScoreTracker will be documented in this file.
 
+## [Unreleased]
+
+### Documentation
+
+**Timelimit capout recovery was entirely absent from the README** — the one
+feature in this plugin that mutates the final score rather than reporting it.
+Shipped in 1.1.0 and hardened since, but a reader would have had no idea the
+plugin can award points.
+
+Documented what it does (awards a capout bonus the game DLL drops when the last
+CP is captured in the same engine frame `mp_timelimit` fires), its guards
+(once per half via `g_capoutRecoveryDone`; skipped rather than half-applied in
+the pre-changelevel window), and its log markers `KTP_CAPOUT_RECOVERY` /
+`KTP_CAPOUT_RECOVERY_FAILED` — which are the audit trail if a final score is
+ever disputed.
+
+**Documented minimum was a version line too low.** README and the source header
+both claimed KTPMatchHandler v0.10.1+; the plugin's `ktp_match_start` handler
+takes the 4-arg signature with `half`, which landed in **0.10.39**. On
+0.10.1–0.10.38 the forward mis-binds. Corrected in `README.md`,
+`KTPScoreTracker.sma`, and `CLAUDE.md`.
+
+**Other README gaps closed:**
+- `KTP_CP_CAPTURED` / `ktp_cap_score` are gated on `g_matchActive` as of 1.1.4,
+  but the log-format section still read as unconditional. Warmup captures
+  produce chat output only — now stated above the examples.
+- Capout recovery's two log lines now carry their actual field formats, and the
+  `mp_clan_scoring_bonus_allies`/`_axis` cvars it reads are named.
+- `ktp_version_reporter` added to Requirements (hard build dependency; enrolls
+  the plugin in the fleet-wide `amx_ktp_versions` rcon).
+- End-of-match summary noted as connected-players-only — a capper who leaves
+  before match end appears in neither the chat summary nor `ktp_cap_summary`.
+- Added the "No captures recorded" chat variant and the capout-recovery chat line.
+
+**Repo skill:** the constants rule forbade a local `TEAM_ALLIES`/`TEAM_AXIS`
+duplicate that the shipped source contains, so it read as violated on first
+inspection. Restated as legacy — prefer `ALLIES`/`AXIS`, don't add call sites.
+
 ## [1.1.4] - 2026-07-18
 
 ### Fixed

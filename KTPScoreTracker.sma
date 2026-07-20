@@ -18,7 +18,8 @@
  * REQUIREMENTS:
  * - DODX module with CP tracking (controlpoints_init, dod_control_point_captured,
  *   dod_score_event forwards)
- * - KTPMatchHandler v0.10.1+ (for ktp_match_start/ktp_match_end forwards)
+ * - KTPMatchHandler v0.10.39+ (ktp_match_start/ktp_match_end forwards; 0.10.39
+ *   added the 4th `half` param and made the start forward fire on every half)
  *
  * CHANGELOG:
  *   v1.1.4 (2026-07-18):
