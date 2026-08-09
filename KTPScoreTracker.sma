@@ -1,8 +1,8 @@
-/* KTP Score Tracker v1.1.4
+/* KTP Score Tracker v1.1.5
  * Verbose capture scoring with chat output and HLStatsX-compatible logging
  *
  * AUTHOR: Nein_
- * VERSION: 1.1.4
+ * VERSION: 1.1.5
  * DATE: 2026-07-18
  *
  * DESCRIPTION:
@@ -22,6 +22,14 @@
  *   added the 4th `half` param and made the start forward fire on every half)
  *
  * CHANGELOG:
+ *   v1.1.5 (2026-08-09):
+ *     * CHANGED: team symbols now come from dodconst.inc (ALLIES/AXIS) rather
+ *       than local TEAM_ALLIES/TEAM_AXIS defines shadowing them
+ *     * CHANGED: the two byte-identical capout-bonus lookups collapse into
+ *       get_capout_bonus()
+ *     * FIXED: comment claimed dodx_set_team_score aborts on failure; it has
+ *       returned 0 since KTPAMXX 2.7.22, so the checked branch is live
+ *
  *   v1.1.4 (2026-07-18):
  *     - ST-01: KTP_CP_CAPTURED / ktp_cap_score log lines now gated on
  *       g_matchActive, so h2 warmup caps aren't tagged with the carried-over
