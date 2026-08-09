@@ -2,6 +2,25 @@
 
 All notable changes to KTPScoreTracker will be documented in this file.
 
+## [1.1.5] - 2026-08-09
+
+### Fixed
+
+- **ST-05 — a comment claimed a live branch was dead.** It said dodx *raises a native error* on
+  failure, so the checked branch "only becomes live once dodx_set_team_score honors its
+  return-0 contract". That contract shipped in **KTPAMXX 2.7.22** and has been fleet-live since
+  07-11, so the branch has been the live failure path for weeks. ⚠️ The stale phrase spans a line
+  break, so a single-line grep for it returns a false zero — it has to be read, not grepped.
+
+### Changed
+
+- **ST-04 — retired the local `TEAM_ALLIES`/`TEAM_AXIS` defines.** `dodconst.inc` already defines
+  `ALLIES`/`AXIS` with the same values, and `flush_capture` was already using those, so the file
+  carried two symbol sets for one value — which is how they silently desync. Values identical, so
+  compiled logic is unchanged.
+- **ST-03 — deduped the capout-bonus lookup** into `get_capout_bonus()`. The two call sites were
+  byte-identical; a future edit to one cvar name would have desynced them.
+
 ## [Unreleased]
 
 ### Documentation

@@ -71,7 +71,7 @@
 #include <ktp_version_reporter>
 
 #define PLUGIN_NAME    "KTP Score Tracker"
-#define PLUGIN_VERSION "1.1.4"
+#define PLUGIN_VERSION "1.1.5"
 #define PLUGIN_AUTHOR  "Nein_"
 
 #define MAX_CPS      12
@@ -80,9 +80,8 @@
 // Task ID for batch flush
 #define TASK_FLUSH_CAPTURE 55700
 
-// Team constants (DoD)
-#define TEAM_ALLIES 1
-#define TEAM_AXIS   2
+// ALLIES/AXIS come from dodconst.inc via <dodx>. Local duplicates retired --
+// two symbols for one value is how they silently desync.
 
 // Match types (must match KTPMatchHandler enum)
 enum MatchType {
@@ -473,11 +472,7 @@ public logevent_final_scores() {
 	// Check if the engine already awarded the capout bonus.
 	// Compare current score against our snapshot from the moment of the CP flip.
 	// If the score already increased by >= the bonus amount, the engine handled it.
-	new bonus;
-	if (capoutTeam == TEAM_ALLIES)
-		bonus = get_cvar_num("mp_clan_scoring_bonus_allies");
-	else
-		bonus = get_cvar_num("mp_clan_scoring_bonus_axis");
+	new bonus = get_capout_bonus(capoutTeam);
 
 	new currentScore = dodx_get_team_score(capoutTeam);
 	new scoreDelta = currentScore - g_scoreAtLastFlip;
@@ -487,7 +482,7 @@ public logevent_final_scores() {
 		// The engine handled the capout — individual CP points + capout bonus
 		// are both included in this delta. No recovery needed.
 		log_amx("[KTPScoreTracker] Capout check: %s owns all %d CPs but score already jumped %d (>= bonus %d) since last flip — engine handled it",
-			(capoutTeam == TEAM_ALLIES) ? "Allies" : "Axis", g_cpCount, scoreDelta, bonus);
+			(capoutTeam == ALLIES) ? "Allies" : "Axis", g_cpCount, scoreDelta, bonus);
 		return;
 	}
 
@@ -496,7 +491,15 @@ public logevent_final_scores() {
 	award_capout_recovery(capoutTeam);
 }
 
-// Returns team ID (TEAM_ALLIES or TEAM_AXIS) if all CPs are owned by one team,
+// Capout bonus for a side. Was duplicated verbatim at two call sites, which is how
+// a future edit to one cvar name silently desyncs them.
+get_capout_bonus(team) {
+	if (team == ALLIES)
+		return get_cvar_num("mp_clan_scoring_bonus_allies");
+	return get_cvar_num("mp_clan_scoring_bonus_axis");
+}
+
+// Returns team ID (ALLIES or AXIS) if all CPs are owned by one team,
 // or 0 if ownership is mixed/neutral.
 check_all_cps_owned() {
 	new firstOwner = 0;
@@ -505,7 +508,7 @@ check_all_cps_owned() {
 		new owner = dodx_objective_get_data(i, CP_owner);
 
 		// Neutral or unowned CP — no capout
-		if (owner != TEAM_ALLIES && owner != TEAM_AXIS)
+		if (owner != ALLIES && owner != AXIS)
 			return 0;
 
 		if (firstOwner == 0)
@@ -521,11 +524,7 @@ award_capout_recovery(team) {
 	g_capoutRecoveryDone = true;
 
 	// Read the capout bonus from the map config cvars
-	new bonus;
-	if (team == TEAM_ALLIES)
-		bonus = get_cvar_num("mp_clan_scoring_bonus_allies");
-	else
-		bonus = get_cvar_num("mp_clan_scoring_bonus_axis");
+	new bonus = get_capout_bonus(team);
 
 	if (bonus <= 0) {
 		log_amx("[KTPScoreTracker] Capout recovery: team %d owns all %d CPs but bonus cvar is %d, skipping",
@@ -539,17 +538,15 @@ award_capout_recovery(team) {
 
 	// Build team name string
 	new teamStr[8];
-	if (team == TEAM_ALLIES)
+	if (team == ALLIES)
 		copy(teamStr, charsmax(teamStr), "Allies");
 	else
 		copy(teamStr, charsmax(teamStr), "Axis");
 
 	// Apply — checked: a failed write must not produce the success
-	// broadcast/chat/log below. NOTE: today dodx raises a native error on
-	// failure (aborting this function before the check — still safe, since
-	// the abort also skips the broadcast), so this branch only becomes
-	// live once dodx_set_team_score honors its documented return-0
-	// contract; kept as the correct shape either way.
+	// broadcast/chat/log below. dodx_set_team_score returns 0 on failure
+	// (KTPAMXX 2.7.22+, fleet-live since 07-11), so this is the live failure
+	// path, not dead code.
 	if (!dodx_set_team_score(team, newScore)) {
 		log_amx("[KTPScoreTracker] Capout recovery FAILED: dodx_set_team_score(%d, %d) rejected — no points awarded",
 			team, newScore);
