@@ -3,6 +3,27 @@
 
 set -e
 
+# A failed build must be VISIBLE, not merely non-zero. Callers pipe this script
+# (`| tail`, `| tee`), and the shell then reports the PIPE's status -- so a failed
+# build reads as exit 0 unless the log itself says so. Gate on the banners below,
+# never on the exit code.
+_ktp_build_exit() {
+    local rc=$?
+    # Folded in from the old `trap "rm -rf $BUILD_DIR" EXIT` -- a second EXIT trap
+    # would have silently replaced it.
+    if [ -n "${BUILD_DIR:-}" ]; then rm -rf "$BUILD_DIR"; fi
+    if [ "$rc" -ne 0 ]; then
+        echo ""
+        echo "========================================"
+        echo "[KTP-BUILD] FAILED: KTPScoreTracker compile.sh exited $rc"
+        echo "========================================"
+        echo "Nothing has been staged."
+    fi
+    exit "$rc"
+}
+trap _ktp_build_exit EXIT
+
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Resolve KTPAMXX. Order: explicit override -> sibling checkout -> the path this
 # script used to hardcode. A contributor who clones the repos side by side gets
@@ -36,7 +57,6 @@ echo ""
 
 # Create temp build directory
 BUILD_DIR=$(mktemp -d)
-trap "rm -rf $BUILD_DIR" EXIT
 
 # Validate
 if [ ! -f "$COMPILER" ]; then
@@ -79,9 +99,13 @@ sed 's/\r$//' "$SCRIPT_DIR/KTPScoreTracker.sma" > "$BUILD_DIR/KTPScoreTracker.sm
 # Compile
 echo "[INFO] Compiling KTPScoreTracker.sma..."
 cd "$BUILD_DIR"
+# `set -e` would kill the script here before the verdict below.
+set +e
 ./amxxpc KTPScoreTracker.sma -i./include -oKTPScoreTracker.amxx
+AMXXPC_RC=$?
+set -e
 
-if [ -f "KTPScoreTracker.amxx" ]; then
+if [ "$AMXXPC_RC" -eq 0 ] && [ -f "KTPScoreTracker.amxx" ]; then
     mkdir -p "$OUTPUT_DIR"
     cp KTPScoreTracker.amxx "$OUTPUT_DIR/"
     echo ""
@@ -100,10 +124,14 @@ if [ -f "KTPScoreTracker.amxx" ]; then
 else
     echo ""
     echo "========================================"
-    echo "[ERROR] Compilation failed!"
+    echo "[ERROR] Compilation failed! (amxxpc exit $AMXXPC_RC)"
     echo "========================================"
     exit 1
 fi
 
 echo ""
 echo "Done!"
+
+# Success sentinel, last line on the only path that reaches here. A caller checks
+# for this rather than for `$?`, which a pipe launders.
+echo "[KTP-BUILD] OK: KTPScoreTracker compile.sh"
