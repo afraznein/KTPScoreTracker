@@ -26,15 +26,15 @@
 name: Tier 1 Smoke
 
 on:
-  # No `paths-ignore` filter -- the job below is a REQUIRED status check.
-  # A path-filtered workflow never fires on a docs-only PR, so the check
-  # never reports and the PR cannot be merged without an --admin override.
-  # Cost of firing on every PR is one smoke run; cost of the filter is a
-  # branch nobody can merge.
+  # No filter of any kind on `pull_request` -- the job below is a REQUIRED
+  # status check. A filtered workflow never fires on the PRs it excludes, the
+  # check never reports, and the branch cannot be merged without an --admin
+  # override. `paths-ignore` was dropped for that reason; `branches: [main]`
+  # is the same trap for a PR opened against any other base and outlived it.
+  # The other eight smoke callers all use a bare `pull_request: {}`.
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  pull_request: {}
   workflow_dispatch:
 
 jobs:
