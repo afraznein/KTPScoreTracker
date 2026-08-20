@@ -36,6 +36,16 @@ production incident.
   "currently live." The in-memory stat counters are gated correctly (v1.1.3);
   when you touch or add a `log_message()` call for a capture/score event,
   gate it the same way or it will tag warmup captures with the live matchid.
+- **A round restart replays every control point as a capture.** The engine resets
+  each CP to its default owner and DODX emits that reset as a
+  `dod_control_point_captured` cascade — on this plugin's primary input, feeding
+  an output other things parse. Nothing currently miscounts, but only by accident:
+  the handler never reads `old_owner`, and `check_all_cps_owned()` is unreachable
+  without a genuine flip inside the recovery window. Any change that counts, logs,
+  or scores off this forward has to tell a replay from a capture, or it will mint
+  phantom captures at every restart. The corollary: CP-ownership bugs heal at the
+  first round restart, so the real exposure window for anything ownership-
+  dependent is map load through the end of the first round.
 
 ## Log output is a consumed data feed
 `KTP_CP_CAPTURED`, `ktp_cap_score`, and `ktp_cap_summary` lines are written in
@@ -114,6 +124,13 @@ out to the scratch dir over running tools "in place".
    leftover `.new`, and check `/tmp` for cores — `find /tmp -maxdepth 1 -name
    'core.*' -mtime -1` on every host. A game-tree core search proves nothing
    (matches only core.so/core.ini/core.wav).
+   ⚠️ **md5-on-disk is the only check available here, not a weaker stand-in for a
+   load check.** This plugin is per-instance opt-in and commented out of the
+   canonical `plugins.ini`, so it is staged fleet-wide while loaded almost
+   nowhere — a "is it in the running plugin list" verify would fail everywhere and
+   mean nothing. The same reason is why Tier 1 CI omits `assert_plugin` and gates
+   compilation plus artifact placement only; don't "improve" either into a load
+   assert that cannot pass.
 
 ## Known dependencies (don't break silently)
 - Requires KTPMatchHandler's `ktp_match_start`/`ktp_match_end` forwards —
