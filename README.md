@@ -46,6 +46,13 @@ skipped when the relevant cvar is `<= 0`.
 2. Copy `KTPScoreTracker.amxx` to `addons/ktpamx/plugins/`
 3. Add `KTPScoreTracker.amxx` to `addons/ktpamx/configs/plugins.ini`
 
+> This plugin is **per-instance opt-in**, and the KTP fleet's canonical
+> `plugins.ini` deliberately leaves it commented out — so it is staged and
+> version-tracked everywhere while running almost nowhere. Anyone verifying a
+> deploy by looking for it in a running server's plugin list will correctly find
+> nothing and wrongly conclude the deploy failed. On the fleet, the md5 on disk
+> is the check that means something.
+
 ## Build
 
 ```bash
