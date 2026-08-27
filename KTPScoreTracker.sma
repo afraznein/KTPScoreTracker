@@ -166,11 +166,16 @@ public client_disconnected(id) {
 // CP Initialization
 // ============================================================
 
+// dodx re-fires this whenever it reorders the CP array, so re-caching from
+// scratch each time is the point, not redundant work.
 public controlpoints_init() {
 	g_cpCount = dodx_objectives_get_num();
 	if (g_cpCount > MAX_CPS)
 		g_cpCount = MAX_CPS;
 
+	// Slot i is the same number dod_control_point_captured and dod_score_event
+	// report — dodx pins obj[i] to the DLL's SetObj order. Don't "fix" the reads
+	// below to use CP_index: that is the 1-based point number (i+1), not this.
 	for (new i = 0; i < g_cpCount; i++) {
 		dodx_objective_get_data(i, CP_name, g_cpName[i], charsmax(g_cpName[]));
 	}

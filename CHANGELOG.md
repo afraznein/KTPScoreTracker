@@ -25,6 +25,27 @@ All notable changes to KTPScoreTracker will be documented in this file.
 
 ### Documentation
 
+**A reported CP index-space bug did not reproduce — pinned the invariant so the
+"fix" is not attempted again.** The report was that `g_cpName[]` is written by
+dodx array slot and read back by DLL `cp_index`, mislabelling capture points.
+Measured against the module source instead: dodx enforces
+`array position == the SetObj cp_index the DLL uses` (KTPAMXX
+`modules/dod/dodx/moduleconfig.cpp`, in the DLL-master resolve), and
+`dod_control_point_captured` / `dod_score_event` both dispatch that same array
+position — `usermsg.cpp` reads `mObjects.obj[id]` with the very value it
+forwards. So the write space and all three read spaces are one space, and the
+reads at `dod_control_point_captured`, `dod_score_event` and `flush_capture`
+were already correct.
+
+The genuinely confusable value is `CP_index`, which dodx defines as the 1-based
+point number (`obj[i].index == i + 1`) and which this plugin never reads.
+Remapping the reads onto it would have introduced exactly the off-by-one
+mislabelling the report described. Comments now state the space at the cache
+site, because nothing on the Pawn side can query it — that gap is what
+`afraznein/KTPAMXX#56` asks to close with a queryable index-space native.
+
+No behaviour change; comment-only in the `.sma`.
+
 **Timelimit capout recovery was entirely absent from the README** — the one
 feature in this plugin that mutates the final score rather than reporting it.
 Shipped in 1.1.0 and hardened since, but a reader would have had no idea the
