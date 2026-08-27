@@ -73,10 +73,9 @@ a local `TEAM_ALLIES`/`TEAM_AXIS` (or similar) duplicate — every call site
 building a team-name string should read from the same symbol. Two symbols for
 one value is how they silently desync on a future edit.
 
-The shipped source already violates this: `TEAM_ALLIES`/`TEAM_AXIS` are defined
-locally and used in the capout-recovery path while `flush_capture` uses
-`ALLIES`/`AXIS`. Treat that as legacy — prefer `ALLIES`/`AXIS` in new code and
-don't add call sites for the duplicates.
+The source did carry local `TEAM_ALLIES`/`TEAM_AXIS` defines shadowing these;
+they were retired in 1.1.5 (ST-04) and every team-symbol site now reads
+`ALLIES`/`AXIS`. Keep it that way.
 
 ## Pawn checklist (apply to every diff)
 - `charsmax(buf)` for every format/copy; watch truncation on composed chat lines.

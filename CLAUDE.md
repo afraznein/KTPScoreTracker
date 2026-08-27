@@ -43,7 +43,10 @@ See `N:\Nein_\KTP Git Projects\CLAUDE.md` for full paramiko SSH documentation, s
 - `N:\Nein_\KTP Git Projects\TODO.md` - Development TODO list
 
 ## Key Files to Update on Version Bump
-1. `KTPScoreTracker.sma` - `#define PLUGIN_VERSION`
+1. `KTPScoreTracker.sma` - THREE sites: the file header (line 1), `VERSION:`
+   (line 5), and `#define PLUGIN_VERSION`. Add the in-file changelog entry too.
 2. `CHANGELOG.md` - Add new version section
-3. `README.md` - Update version in header
+3. `README.md` - TWO sites: the title header (line 1) and `Current: vX.Y.Z`
+   further down. Grep the old version to catch both:
+   `grep -n '1\.1\.5' README.md KTPScoreTracker.sma`
 4. `N:\Nein_\KTP Git Projects\TODO.md` - Update completed/pending items
