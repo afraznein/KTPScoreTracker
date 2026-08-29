@@ -34,7 +34,7 @@ Deploy compiled plugin to production servers using Python/Paramiko (preferred ov
 
 **Remote Path:** `~/dod-{port}/serverfiles/dod/addons/ktpamx/plugins/KTPScoreTracker.amxx`
 
-See `N:\Nein_\KTP Git Projects\CLAUDE.md` for full paramiko SSH documentation, server credentials, and working deployment scripts. Plugin takes effect on next `plugin_init` (map change or full restart in extension mode — see project-root CLAUDE.md "Deployment Flow").
+See `N:\Nein_\KTP Git Projects\CLAUDE.md` for full paramiko SSH documentation, server credentials, and working deployment scripts. Stage the new artifact as `KTPScoreTracker.amxx.new`; it swaps in at the 03:00 ET nightly restart, which is the only activation path — extension mode never reloads plugins on a map change (see project-root CLAUDE.md "Scheduled restarts" and this repo's plugin-dev skill).
 
 ## Related Projects
 - `N:\Nein_\KTP Git Projects\KTPMatchHandler` - Source of `ktp_match_start` / `ktp_match_end` forwards
