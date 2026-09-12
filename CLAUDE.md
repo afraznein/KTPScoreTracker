@@ -29,6 +29,16 @@ Verbose capture-scoring plugin for KTP Day of Defeat servers. Outputs real-time 
 - **KTPMatchHandler v0.10.39+** — `ktp_match_start` / `ktp_match_end` forwards drive the per-match stat reset + summary. 0.10.39 is the floor: it added the 4th `half` param and made the start forward fire on every half.
 - **`ktp_version_reporter` shared include** (KTPAMXX) — registers with fleet-wide `amx_ktp_versions` rcon command
 
+## Enabling it is a two-repo change
+
+KTPHLStatsX's `hlstats.pl` has no handler for this plugin's log families (`ktp_cap_score`,
+`ktp_cap_summary`, `KTP_CP_CAPTURED`, `KTP_CAPOUT_RECOVERY`), so adding it to `plugins.ini` alone emits
+lines nothing consumes. Per-player capture data already reaches `ktp_flag_captures` through the daemon's
+own capture handler; what this plugin adds by itself is the in-chat notifications and the end-of-match
+summary.
+
+⚠️ A deployed md5 proves the file is on disk, not that the plugin runs. Check `plugins.ini`.
+
 ## Server Deployment
 Deploy compiled plugin to production servers using Python/Paramiko (preferred over shell SSH).
 
